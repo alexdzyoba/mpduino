@@ -1,0 +1,16 @@
+Well, hello there.
+
+First of all, if you have any questions about this project feel free to write me
+a letter to finger@reduct.ru
+
+Here is my code for MPDuino - MPD Arduino client. You can find more about
+MPDuino on http://finger.reduct.ru/tag/mpduino (on Russian now, but you can
+write me to finger@reduct.ru and I will answer in english)
+
+To compile you need:
+- gcc (obviously)
+- libmpd (http://mpd.wikia.com/wiki/ClientLib:libmpd)
+- Arduino SDK
+
+Makefile compile only daemon code. To compile Ardiuno binary go to Arduino IDE.
+

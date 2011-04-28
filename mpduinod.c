@@ -7,6 +7,7 @@
 #include <signal.h>
 #include <libmpd-1.0/libmpd/libmpd.h>
 
+#include <syslog.h>
 
 #define CONNECTION_TIMEOUT 0
 
@@ -16,6 +17,7 @@
 #define PLAY 	5
 #define NEXT 	6
 #define VOLUP 	7
+
 /* File descriptor for serial port */
 int fd;
 
@@ -28,24 +30,29 @@ char *host;
 /* MPD port */
 int port;
 
+/* Priority for syslog messages */
+int priority = LOG_CONS|LOG_USER;
+
+
 void signal_handler(int sig)
 {
 	switch(sig)
 	{
 		case SIGQUIT:
 		case SIGTERM:
+			syslog(priority, "Caught SIGTERM. Exiting...");
 			free(host);
 			close(fd);
 			mpd_free(obj);
+			syslog(priority, "halted");
 			exit(0);
 			break;
 		default:
-			perror("Unhandled signal\n");
+			syslog(priority, "Caught unhandled signal\n");
 			break;
 	}
 	return;
 }
-
 
 void usage()
 {
@@ -55,10 +62,10 @@ void usage()
 
 void error_callback(MpdObj *mi,int errorid, char *msg, void *userdata)
 {
-        printf("Error %i:'%s'\n", errorid, msg);
+        syslog(priority, "Error %i:'%s'\n", errorid, msg);
 }
- 
-void connect2mpd()
+
+void configure_serial_port()
 {
 	struct termios options;
     
@@ -66,19 +73,28 @@ void connect2mpd()
     tcgetattr(fd, &options);
 
     /* Set the baud rates to 9600  */
-    cfsetispeed(&options, B9600);
-    cfsetospeed(&options, B9600);
-	
+    if(cfsetispeed(&options, B9600) || cfsetospeed(&options, B9600))
+		syslog(priority, "Error configuring port");
+
+	return;
+}
+ 
+void connect2mpd()
+{
 	/* Create mpd object */
     obj = mpd_new(host, port, NULL); 
+	if(obj == NULL)
+		syslog(priority, "Error: can't create mpd object");
 	
 	/* Set timeout */
     mpd_set_connection_timeout(obj, 10);
 
 	/* Connect to MPD */
-    /*mpd_signal_connect2mpd_error(obj,(ErrorCallback)error_callback, NULL);*/
-	mpd_connect(obj);
-
+	mpd_signal_connect_error(obj,(ErrorCallback)error_callback, NULL);
+	if(mpd_connect(obj))
+		syslog(priority, "Error: can't connect to mpd server");
+	else
+		syslog(priority, "Successfully connected to mpd server %s at %d", host, port);
 }
 
 int main(int argc, char *argv[])
@@ -86,8 +102,14 @@ int main(int argc, char *argv[])
 	char buf[1];
 	int state;
 	
-	/* Handle MPD hostname and port number */
-	if(argc !=3)
+	/* Open syslog	*/
+	openlog("mpduinod", LOG_CONS, LOG_USER);
+			
+	/* Set signal handler */
+	signal(SIGQUIT, signal_handler);
+	
+	/* Handle MPD hostname, port number and serial port*/
+	if(argc !=4)
 	{
 		usage();
 		exit(1);
@@ -96,28 +118,34 @@ int main(int argc, char *argv[])
 	host = (char *)malloc(strlen(argv[1]));
 	strncpy(host, argv[1], strlen(argv[1]));
 	port = atoi(argv[2]);
-	
-	/* Set signal handler */
-	signal(SIGQUIT, signal_handler);
 
 	/* Daemonize! */
 	if(daemon(0,1))
-	{
-		perror("Can't daemonize\n");	
-	}
+		syslog(priority, "Can't daemonize\n");	
 
 	/* Open serial port for reading */
-	fd = open("/dev/ttyUSB1",O_RDONLY);
+	configure_serial_port();
+	fd = open(argv[3], O_RDONLY);
 	if(fd == -1)
 	{
-		perror("Can't open serial port\n");
+		syslog(priority, "Can't open serial port\n");
 		exit(1);
 	}
-	connect2mpd();	
 	
+
+	/* Enter infinite loop */	
 	while(1)
 	{
 		read(fd, buf, 1);
+		syslog(priority, "Received byte %d", buf[0]);
+		
+		/* Establish connection to mpd	*/
+		if(!mpd_check_connected(obj))
+		{
+			syslog(priority, "Connection not established: connecting");
+			connect2mpd();
+		}
+
 		switch(buf[0])
 		{
 			case VOLDOWN	: 	mpd_status_set_volume(obj, mpd_status_get_volume(obj)-5); 	break;

@@ -1,11 +1,11 @@
-Well, hello there.
+mpduino
+=======
 
-First of all, if you have any questions about this project feel free to write me
-a letter to finger@reduct.ru
+If you have any questions about this project feel free to write me a letter to
+alex@dzyoba.com
 
-Here is my code for MPDuino - MPD Arduino client. You can find more about
-MPDuino on http://finger.reduct.ru/tag/mpduino (on Russian now, but you can
-write me to finger@reduct.ru and I will answer in english)
+Here is my code for MPDuino - MPD Arduino client. It allows you to control MPD
+on your computer via buttons on attached Arduino board.
 
 To compile you need:
 - gcc (obviously)
@@ -13,4 +13,3 @@ To compile you need:
 - Arduino SDK
 
 Makefile compile only daemon code. To compile Ardiuno binary go to Arduino IDE.
-

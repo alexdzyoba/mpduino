@@ -93,15 +93,14 @@ void connect2mpd()
     if (mpd_connect(obj)) {
         syslog(priority, "Error: can't connect to mpd server");
     } else {
-        syslog(priority, "Successfully connected to mpd server %s at %d", host,
-               port);
+        syslog(priority, "Successfully connected to mpd server %s at %d", host, port);
     }
 }
 
 int main(int argc, char *argv[])
 {
     char buf[1];
-    int  state;
+    int state;
 
     /* Open syslog */
     openlog("mpduinod", LOG_CONS, LOG_USER);
